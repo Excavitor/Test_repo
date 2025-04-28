@@ -1,5 +1,6 @@
 from sqlalchemy.future import select
-from Test_repo.app.models import Book
+from app.models import Book
+
 
 async def create_book(db, book):
     new_book = Book(title=book.title, author=book.author, published_date=book.published_date)
