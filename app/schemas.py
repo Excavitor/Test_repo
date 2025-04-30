@@ -4,6 +4,7 @@ from typing import Optional
 
 class BookCreate(BaseModel):
     title: str
+    author: str
 
 class Book(BookCreate):
     id: int

@@ -1,13 +1,10 @@
 from sqlalchemy.future import select
-from sqlalchemy.orm import Session
 from app.models import Book, Author, Review
 from sqlalchemy import update as sqlalchemy_update, delete as sqlalchemy_delete
-
-# from Test_repo.app.models import Author
-
+from datetime import datetime
 
 async def create_book(db, book):
-    new_book = Book(title=book.title)
+    new_book = Book(title=book.title, author=book.author)
     db.add(new_book)
     await db.commit()
     await db.refresh(new_book)
@@ -36,7 +33,6 @@ async def delete_book(db, book_id: int):
     await db.execute(query)
     await db.commit()
 
-
 async def create_author(db, author):
     new_author = Author(name=author.name, biography=author.biography, birth_date=author.birth_date, book_id=author.book_id)
     db.add(new_author)
@@ -49,12 +45,16 @@ async def get_authors(db):
     return result.scalars().all()
 
 async def create_review(db, review):
-    new_review = Review(rating=review.rating, review_text=review.review_text, date_posted=review.date_posted, book_id=review.book_id)
+    new_review = Review(rating=review.rating, review_text=review.review_text, date_posted=datetime.utcnow(), book_id=review.book_id)
     db.add(new_review)
     await db.commit()
     await db.refresh(new_review)
     return new_review
 
-async def get_reviews(db):
-    result = await db.execute(select(Review))
-    return result.scalars().all()
+async def get_reviews(db, book_id=None):
+    if book_id:
+        result = await db.execute(select(Review).where(Review.book_id == book_id))
+    else:
+        result = await db.execute(select(Review))
+    reviews = result.scalars().all()
+    return reviews

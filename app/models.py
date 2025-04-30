@@ -11,6 +11,7 @@ class Book(BaseModel):
     __tablename__ = 'books'
     id = Column(Integer, primary_key=True)
     title = Column(String(255), nullable=False)
+    author = Column(String(255), nullable=False)
     authors = relationship("Author", back_populates="book", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="book", cascade="all, delete-orphan")
 
