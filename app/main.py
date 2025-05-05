@@ -57,8 +57,8 @@ async def create_review(review: schemas.ReviewCreate, db: AsyncSession = Depends
     return await crud.create_review(db, review)
 
 
-@app.get("/api/books/{book_id}/reviews/", response_model=list[schemas.ReviewOut])
-async def list_reviews_by_book(book_id: int, db: AsyncSession = Depends(get_db)):
+@app.get("/api/books/reviews/", response_model=list[schemas.ReviewOut])
+async def list_reviews_by_book(book_id: int = None, db: AsyncSession = Depends(get_db)):
     reviews = await crud.get_reviews(db, book_id)
     return reviews
 
