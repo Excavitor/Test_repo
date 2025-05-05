@@ -4,7 +4,7 @@ from sqlalchemy import update as sqlalchemy_update, delete as sqlalchemy_delete
 from datetime import datetime
 
 async def create_book(db, book):
-    new_book = Book(title=book.title, author=book.author)
+    new_book = Book(title=book.title)
     db.add(new_book)
     await db.commit()
     await db.refresh(new_book)

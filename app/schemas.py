@@ -2,9 +2,19 @@ from pydantic import BaseModel
 from datetime import date, datetime
 from typing import Optional
 
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
 class BookCreate(BaseModel):
     title: str
-    author: str
+    # author: str
 
 class Book(BookCreate):
     id: int

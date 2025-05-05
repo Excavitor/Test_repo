@@ -2,6 +2,8 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app import models, crud, schemas
 from app.database import engine, SessionLocal, Base
+from fastapi.security import OAuth2PasswordRequestForm
+from app.auth import create_access_token, authenticate_user, get_password_hash, get_current_user
 
 app = FastAPI()
 
@@ -10,15 +12,36 @@ async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-
 async def get_db():
     async with SessionLocal() as session:
         yield session
 
+@app.get("/secure-data/")
+async def secure_route(current_user: models.User = Depends(get_current_user)):
+    return {"message": f"Hello {current_user.username}, you are authenticated!"}
+
+
+@app.post("/register/")
+async def register(user: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
+    hashed_password = get_password_hash(user.password)
+    db_user = models.User(username=user.username, hashed_password=hashed_password)
+    db.add(db_user)
+    await db.commit()
+    return {"message": "User created"}
+
+@app.post("/token", response_model=schemas.Token)
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+    user = await authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    access_token = create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+
 @app.get("/")
 async def index():
     return "hello, world"
-
 
 @app.post("/books/", response_model=schemas.Book)
 async def create_book(book: schemas.BookCreate, db: AsyncSession = Depends(get_db)):

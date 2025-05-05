@@ -7,11 +7,18 @@ class BaseModel(Base):
     __abstract__ = True
     write_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class User(Base):
+    __tablename__ = "public"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(150), unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+
+
 class Book(BaseModel):
     __tablename__ = 'books'
     id = Column(Integer, primary_key=True)
     title = Column(String(255), nullable=False)
-    author = Column(String(255), nullable=False)
+    # author = Column(String(255), nullable=False)
     authors = relationship("Author", back_populates="book", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="book", cascade="all, delete-orphan")
 
