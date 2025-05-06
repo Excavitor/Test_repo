@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from datetime import date, datetime
 from typing import Optional
 
@@ -14,7 +14,7 @@ class Token(BaseModel):
 
 class BookCreate(BaseModel):
     title: str
-    # author: str
+    publisher_id: int
 
 class Book(BookCreate):
     id: int
@@ -45,6 +45,19 @@ class ReviewOut(ReviewCreate):
     id: int
     date_posted: datetime
     write_date: datetime
+
+    class Config:
+        orm_mode = True
+
+class PublisherCreate(BaseModel):
+    name: str
+    email: EmailStr
+    phone_number: Optional[str] = None
+    website: Optional[str] = None
+
+class PublisherOut(PublisherCreate):
+    id: int
+    book_count: int
 
     class Config:
         orm_mode = True

@@ -86,5 +86,13 @@ async def list_reviews_by_book(book_id: int = None, db: AsyncSession = Depends(g
 async def list_all_reviews(db: AsyncSession = Depends(get_db)):
     return await crud.get_reviews(db)
 
+@protected.post("/publishers/", response_model=schemas.PublisherOut)
+async def create_publisher(publisher: schemas.PublisherCreate, db: AsyncSession = Depends(get_db)):
+    return await crud.create_publisher(db, publisher)
+
+@protected.get("/publishers/", response_model=list[schemas.PublisherOut])
+async def list_publishers(db: AsyncSession = Depends(get_db)):
+    return await crud.get_publishers(db)
+
 app.include_router(public)
 app.include_router(protected)
