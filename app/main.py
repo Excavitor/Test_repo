@@ -39,9 +39,9 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
 
 
 
-@app.get("/")
-async def index():
-    return "hello, world"
+# @app.get("/")
+# async def index():
+#     return "hello, world"
 
 @app.post("/books/", response_model=schemas.Book)
 async def create_book(book: schemas.BookCreate, db: AsyncSession = Depends(get_db)):
