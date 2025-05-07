@@ -1,11 +1,25 @@
 from pydantic import BaseModel, EmailStr
 from datetime import date, datetime
 from typing import Optional
+from enum import Enum
 
+class Role(str, Enum):
+    ADMIN = "admin"
+    PUBLISHER = "publisher"
+    CUSTOMER = "customer"
 
 class UserCreate(BaseModel):
     username: str
     password: str
+    role: Role = Role.CUSTOMER
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    role: Role
+
+    class Config:
+        orm_mode = True
 
 class Token(BaseModel):
     access_token: str

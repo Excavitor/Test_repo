@@ -1,7 +1,13 @@
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Date, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
+import enum
+
+class Role(str, enum.Enum):
+    ADMIN = "admin"
+    PUBLISHER = "publisher"
+    CUSTOMER = "customer"
 
 class BaseModel(Base):
     __abstract__ = True
@@ -12,6 +18,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(150), unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
+    role = Column(Enum(Role), default=Role.CUSTOMER, nullable=False)
 
 
 class Book(BaseModel):

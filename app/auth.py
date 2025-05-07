@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app import models, schemas
 from app.database import SessionLocal
+from typing import List, Optional
 
 SECRET_KEY = "shad_1234"  # Use a strong key in production
 ALGORITHM = "HS256"
@@ -56,3 +57,18 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     if user is None:
         raise credentials_exception
     return user
+
+def has_role(allowed_roles: List[models.Role]):
+    async def role_checker(user: models.User = Depends(get_current_user)):
+        if user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient permissions. Required roles: {[role.value for role in allowed_roles]}"
+            )
+        return user
+    return role_checker
+
+# Create role-based permission dependencies
+has_admin_permission = has_role([models.Role.ADMIN])
+has_publisher_permission = has_role([models.Role.ADMIN, models.Role.PUBLISHER])
+has_customer_permission = has_role([models.Role.ADMIN, models.Role.PUBLISHER, models.Role.CUSTOMER])
