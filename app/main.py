@@ -46,60 +46,65 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
 async def index():
     return "hello, world"
 
-# Admin and publisher can create books
 @publisher_router.post("/books/", response_model=schemas.Book)
 async def create_book(book: schemas.BookCreate, db: AsyncSession = Depends(get_db)):
     return await crud.create_book(db, book)
 
-# Anyone with access to API can read books
 @customer_router.get("/books/", response_model=list[schemas.Book])
 async def read_books(db: AsyncSession = Depends(get_db)):
     return await crud.get_books(db)
 
-# Admin and publisher can update books
 @publisher_router.put("/books/{book_id}")
 async def update_book(book_id: int, book: schemas.BookCreate, db: AsyncSession = Depends(get_db)):
     await crud.update_book(db, book_id, book)
     return {"message": "Book updated successfully"}
 
-# Admin and publisher can delete books
 @publisher_router.delete("/books/{book_id}")
 async def delete_book(book_id: int, db: AsyncSession = Depends(get_db)):
     await crud.delete_book(db, book_id)
     return {"message": "Book deleted successfully"}
 
-# Admin can create authors
 @publisher_router.post("/api/authors/", response_model=schemas.AuthorOut)
 async def create_author(author: schemas.AuthorCreate, db: AsyncSession = Depends(get_db)):
     return await crud.create_author(db, author)
 
-# Everyone can list authors
 @customer_router.get("/api/authors/", response_model=list[schemas.AuthorOut])
 async def list_authors(db: AsyncSession = Depends(get_db)):
     return await crud.get_authors(db)
 
-# Anyone can create a review (admin, publisher, customer)
 @customer_router.post("/api/reviews/", response_model=schemas.ReviewOut)
-async def create_review(review: schemas.ReviewCreate, db: AsyncSession = Depends(get_db)):
-    return await crud.create_review(db, review)
+async def create_review(
+    review: schemas.ReviewCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return await crud.create_review(db, review, current_user)
 
-# Anyone can list reviews
-@customer_router.get("/api/books/reviews/", response_model=list[schemas.ReviewOut])
-async def list_reviews_by_book(book_id: int = None, db: AsyncSession = Depends(get_db)):
-    reviews = await crud.get_reviews(db, book_id)
-    return reviews
-
-# Anyone can list all reviews
 @customer_router.get("/api/reviews/", response_model=list[schemas.ReviewOut])
 async def list_all_reviews(db: AsyncSession = Depends(get_db)):
     return await crud.get_reviews(db)
 
-# Only admin can create publishers
+@customer_router.put("/api/reviews/{review_id}", response_model=schemas.ReviewOut)
+async def update_review(
+    review_id: int,
+    review: schemas.ReviewCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return await crud.update_review(db, review_id, review, current_user)
+
+@customer_router.delete("/api/reviews/{review_id}")
+async def delete_review(
+    review_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return await crud.delete_review(db, review_id, current_user)
+
 @admin_router.post("/publishers/", response_model=schemas.PublisherOut)
 async def create_publisher(publisher: schemas.PublisherCreate, db: AsyncSession = Depends(get_db)):
     return await crud.create_publisher(db, publisher)
 
-# Anyone can list publishers
 @customer_router.get("/publishers/", response_model=list[schemas.PublisherOut])
 async def list_publishers(db: AsyncSession = Depends(get_db)):
     return await crud.get_publishers(db)

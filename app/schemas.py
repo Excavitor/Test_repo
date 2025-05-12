@@ -57,6 +57,7 @@ class ReviewCreate(BaseModel):
 
 class ReviewOut(ReviewCreate):
     id: int
+    user_id: int
     date_posted: datetime
     write_date: datetime
 

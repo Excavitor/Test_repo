@@ -47,6 +47,8 @@ class Review(BaseModel):
     date_posted = Column(DateTime, default=datetime.utcnow)
     book_id = Column(Integer, ForeignKey('books.id'), nullable=False)
     book = relationship("Book", back_populates="reviews")
+    user_id = Column(Integer, ForeignKey('public.id'), nullable=False)
+    user = relationship("User")
 
 class Publisher(BaseModel):
     __tablename__ = "publishers"

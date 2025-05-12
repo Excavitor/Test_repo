@@ -1,7 +1,8 @@
 from sqlalchemy.future import select
-from app.models import Book, Author, Review, Publisher
+from app.models import Book, Author, Review, Publisher, Role
 from sqlalchemy import update as sqlalchemy_update, delete as sqlalchemy_delete
 from datetime import datetime
+from fastapi import HTTPException
 
 async def create_book(db, book):
     new_book = Book(title=book.title, publisher_id=book.publisher_id)
@@ -59,8 +60,14 @@ async def get_authors(db):
     result = await db.execute(select(Author))
     return result.scalars().all()
 
-async def create_review(db, review):
-    new_review = Review(rating=review.rating, review_text=review.review_text, date_posted=datetime.utcnow(), book_id=review.book_id)
+async def create_review(db, review, current_user):
+    new_review = Review(
+        rating=review.rating,
+        review_text=review.review_text,
+        date_posted=datetime.utcnow(),
+        book_id=review.book_id,
+        user_id=current_user.id  # assign ownership
+    )
     db.add(new_review)
     await db.commit()
     await db.refresh(new_review)
@@ -73,6 +80,38 @@ async def get_reviews(db, book_id=None):
         result = await db.execute(select(Review))
     reviews = result.scalars().all()
     return reviews
+
+async def update_review(db, review_id: int, updated_data, current_user):
+    result = await db.execute(select(Review).where(Review.id == review_id))
+    review = result.scalar_one_or_none()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    # Allow only admin or owner
+    if review.user_id != current_user.id and current_user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Not authorized to update this review")
+
+    review.rating = updated_data.rating
+    review.review_text = updated_data.review_text
+    review.book_id = updated_data.book_id
+
+    await db.commit()
+    await db.refresh(review)
+    return review
+
+async def delete_review(db, review_id: int, current_user):
+    result = await db.execute(select(Review).where(Review.id == review_id))
+    review = result.scalar_one_or_none()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    if review.user_id != current_user.id and current_user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this review")
+
+    await db.delete(review)
+    await db.commit()
+    return {"detail": "Review deleted"}
+
 
 async def create_publisher(db, publisher):
     new_pub = Publisher(
