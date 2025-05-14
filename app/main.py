@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, APIRouter
+from fastapi import FastAPI, Depends, HTTPException, APIRouter, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app import models, crud, schemas
 from app.database import engine, SessionLocal, Base
@@ -8,6 +8,9 @@ from app.auth import (
     has_admin_permission, has_publisher_permission, has_customer_permission
 )
 from app.models import Role
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 public = APIRouter()
@@ -15,6 +18,8 @@ admin_router = APIRouter(dependencies=[Depends(has_admin_permission)])
 publisher_router = APIRouter(dependencies=[Depends(has_publisher_permission)])
 customer_router = APIRouter(dependencies=[Depends(has_customer_permission)])
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
 @public.on_event("startup")
 async def init_db():
@@ -24,6 +29,21 @@ async def init_db():
 async def get_db():
     async with SessionLocal() as session:
         yield session
+
+# serve login page
+@public.get("/", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+# serve registration page
+@public.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
+
+# serve dashboard (requires auth in JS)
+@public.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 @public.post("/register/", response_model=schemas.UserResponse)
 async def register(user: schemas.UserCreate, db: AsyncSession = Depends(get_db)):

@@ -25,29 +25,63 @@ async def update_book(db, book_id: int, updated_data):
     book = await db.get(Book, book_id)
 
     if book:
-        pub_id = book.publisher_id
-        # delete the book
-        await db.execute(
+        # Check if publisher_id is changing and update publisher book counts accordingly
+        if book.publisher_id != updated_data.publisher_id:
+            # Decrement count for the old publisher
+            old_pub = await db.get(Publisher, book.publisher_id)
+            if old_pub and old_pub.book_count > 0:
+                old_pub.book_count -= 1
+                # db.add(old_pub) # add is not strictly necessary after get and modification
+
+            # Increment count for the new publisher
+            new_pub = await db.get(Publisher, updated_data.publisher_id)
+            if new_pub:
+                new_pub.book_count += 1
+                # db.add(new_pub) # add is not strictly necessary after get and modification
+            else:
+                 # Optional: Handle case where new publisher_id is invalid
+                 # You might want to raise an HTTPException here if the publisher must exist
+                 print(f"Warning: New Publisher ID {updated_data.publisher_id} not found.")
+
+
+        # Update the book attributes
+        book.title = updated_data.title
+        book.publisher_id = updated_data.publisher_id # Update the publisher_id
+
+        # The changes are tracked by the session since we fetched the object
+        # No need for db.add(book) unless the object was somehow detached
+
+        await db.commit()
+        await db.refresh(book) # Refresh to load updated attributes from the database
+        return book # Return the updated book object
+
+    else:
+        # If the book with the given ID is not found, raise an HTTPException
+        raise HTTPException(status_code=404, detail="Book not found")
+
+
+async def delete_book(db, book_id: int):
+    # When deleting, decrement the publisher's book count
+    book_to_delete = await db.get(Book, book_id)
+    if book_to_delete:
+        pub_id = book_to_delete.publisher_id
+        query = (
             sqlalchemy_delete(Book)
             .where(Book.id == book_id)
             .execution_options(synchronize_session="fetch")
         )
-        # decrement publisher count
+        await db.execute(query)
+
+        # Decrement publisher count
         pub = await db.get(Publisher, pub_id)
         if pub and pub.book_count > 0:
             pub.book_count -= 1
-            db.add(pub)
+            # db.add(pub) # add is not strictly necessary after get and modification
 
-    await db.commit()
+        await db.commit()
+    else:
+        raise HTTPException(status_code=404, detail="Book not found")
 
-async def delete_book(db, book_id: int):
-    query = (
-        sqlalchemy_delete(Book)
-        .where(Book.id == book_id)
-        .execution_options(synchronize_session="fetch")
-    )
-    await db.execute(query)
-    await db.commit()
 
 async def create_author(db, author):
     new_author = Author(name=author.name, biography=author.biography, birth_date=author.birth_date, book_id=author.book_id)
