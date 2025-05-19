@@ -1,164 +1,293 @@
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from app.models import Book, Author, Review, Publisher, Role
 from sqlalchemy import update as sqlalchemy_update, delete as sqlalchemy_delete
-from datetime import datetime
+from app import models, schemas  # Import base models and schemas
+from datetime import datetime, timezone
 from fastapi import HTTPException
+from typing import List, Optional
 
-async def create_book(db, book):
-    new_book = Book(title=book.title, publisher_id=book.publisher_id)
+
+# --- Book CRUD ---
+async def create_book(db: AsyncSession, book_in: schemas.BookCreate) -> models.Book:
+    publisher = await db.get(models.Publisher, book_in.publisher_id)
+    if not publisher:
+        raise HTTPException(status_code=404, detail=f"Publisher with id {book_in.publisher_id} not found")
+
+    new_book = models.Book(title=book_in.title, publisher_id=book_in.publisher_id)
     db.add(new_book)
 
-    pub = await db.get(Publisher, book.publisher_id)
-    if pub:
-        pub.book_count += 1
-        db.add(pub)
+    publisher.book_count += 1
+    # db.add(publisher) # SQLAlchemy tracks changes to managed objects
 
     await db.commit()
     await db.refresh(new_book)
+    # Eager load publisher if needed for the response, though Book schema doesn't include it by default
+    # await db.refresh(publisher)
     return new_book
 
-async def get_books(db):
-    result = await db.execute(select(Book))
+
+async def get_books(db: AsyncSession) -> List[models.Book]:
+    result = await db.execute(select(models.Book))
     return result.scalars().all()
 
-async def update_book(db, book_id: int, updated_data):
-    book = await db.get(Book, book_id)
 
-    if book:
-        # Check if publisher_id is changing and update publisher book counts accordingly
-        if book.publisher_id != updated_data.publisher_id:
-            # Decrement count for the old publisher
-            old_pub = await db.get(Publisher, book.publisher_id)
-            if old_pub and old_pub.book_count > 0:
-                old_pub.book_count -= 1
-                # db.add(old_pub) # add is not strictly necessary after get and modification
-
-            # Increment count for the new publisher
-            new_pub = await db.get(Publisher, updated_data.publisher_id)
-            if new_pub:
-                new_pub.book_count += 1
-                # db.add(new_pub) # add is not strictly necessary after get and modification
-            else:
-                 # Optional: Handle case where new publisher_id is invalid
-                 # You might want to raise an HTTPException here if the publisher must exist
-                 print(f"Warning: New Publisher ID {updated_data.publisher_id} not found.")
+async def get_book(db: AsyncSession, book_id: int) -> Optional[models.Book]:
+    return await db.get(models.Book, book_id)
 
 
-        # Update the book attributes
-        book.title = updated_data.title
-        book.publisher_id = updated_data.publisher_id # Update the publisher_id
+async def update_book(db: AsyncSession, book_id: int, book_update: schemas.BookCreate) -> Optional[models.Book]:
+    book = await db.get(models.Book, book_id)
+    if not book:
+        return None  # Will be handled as 404 in main.py
 
-        # The changes are tracked by the session since we fetched the object
-        # No need for db.add(book) unless the object was somehow detached
+    # Handle publisher change and book counts
+    if book.publisher_id != book_update.publisher_id:
+        # Decrement count for the old publisher if it exists
+        if book.publisher_id:
+            old_publisher = await db.get(models.Publisher, book.publisher_id)
+            if old_publisher and old_publisher.book_count > 0:
+                old_publisher.book_count -= 1
+                # db.add(old_publisher)
 
-        await db.commit()
-        await db.refresh(book) # Refresh to load updated attributes from the database
-        return book # Return the updated book object
+        # Increment count for the new publisher
+        new_publisher = await db.get(models.Publisher, book_update.publisher_id)
+        if not new_publisher:
+            # This case should ideally be caught by schema if publisher_id is always required and valid
+            raise HTTPException(status_code=404, detail=f"New Publisher ID {book_update.publisher_id} not found.")
+        new_publisher.book_count += 1
+        # db.add(new_publisher)
+        book.publisher_id = book_update.publisher_id
 
-    else:
-        # If the book with the given ID is not found, raise an HTTPException
+    book.title = book_update.title
+    # book.write_date is handled by the model's onupdate
+
+    # db.add(book) # SQLAlchemy tracks changes
+    await db.commit()
+    await db.refresh(book)
+    return book
+
+
+async def delete_book(db: AsyncSession, book_id: int) -> bool:
+    book_to_delete = await db.get(models.Book, book_id)
+    if not book_to_delete:
         raise HTTPException(status_code=404, detail="Book not found")
 
+    # Decrement publisher count if publisher exists
+    if book_to_delete.publisher_id:
+        publisher = await db.get(models.Publisher, book_to_delete.publisher_id)
+        if publisher and publisher.book_count > 0:
+            publisher.book_count -= 1
+            # db.add(publisher)
 
-async def delete_book(db, book_id: int):
-    # When deleting, decrement the publisher's book count
-    book_to_delete = await db.get(Book, book_id)
-    if book_to_delete:
-        pub_id = book_to_delete.publisher_id
-        query = (
-            sqlalchemy_delete(Book)
-            .where(Book.id == book_id)
-            .execution_options(synchronize_session="fetch")
-        )
-        await db.execute(query)
-
-        # Decrement publisher count
-        pub = await db.get(Publisher, pub_id)
-        if pub and pub.book_count > 0:
-            pub.book_count -= 1
-            # db.add(pub) # add is not strictly necessary after get and modification
-
-        await db.commit()
-    else:
-        raise HTTPException(status_code=404, detail="Book not found")
+    # Authors and Reviews associated with this book will be deleted due to
+    # cascade="all, delete-orphan" in Book model relationships
+    await db.delete(book_to_delete)
+    await db.commit()
+    return True
 
 
-async def create_author(db, author):
-    new_author = Author(name=author.name, biography=author.biography, birth_date=author.birth_date, book_id=author.book_id)
+# --- Author CRUD ---
+async def create_author(db: AsyncSession, author_in: schemas.AuthorCreate) -> models.Author:
+    book = await db.get(models.Book, author_in.book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail=f"Book with id {author_in.book_id} not found for author.")
+
+    new_author = models.Author(
+        name=author_in.name,
+        biography=author_in.biography,
+        birth_date=author_in.birth_date,
+        book_id=author_in.book_id
+    )
     db.add(new_author)
     await db.commit()
     await db.refresh(new_author)
     return new_author
 
-async def get_authors(db):
-    result = await db.execute(select(Author))
+
+async def get_authors(db: AsyncSession, book_id: Optional[int] = None) -> List[models.Author]:
+    query = select(models.Author)
+    if book_id:
+        # If you want to fetch authors for a specific book
+        query = query.where(models.Author.book_id == book_id)
+    result = await db.execute(query)
     return result.scalars().all()
 
-async def create_review(db, review, current_user):
-    new_review = Review(
-        rating=review.rating,
-        review_text=review.review_text,
-        date_posted=datetime.utcnow(),
-        book_id=review.book_id,
-        user_id=current_user.id  # assign ownership
+
+async def get_author(db: AsyncSession, author_id: int) -> Optional[models.Author]:
+    return await db.get(models.Author, author_id)
+
+
+async def update_author(db: AsyncSession, author_id: int, author_in: schemas.AuthorUpdate) -> Optional[models.Author]:
+    author = await db.get(models.Author, author_id)
+    if not author:
+        return None  # Will be 404 in main.py
+
+    update_data = author_in.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(author, key, value)
+
+    # author.write_date is handled by the model's onupdate
+    # db.add(author) # SQLAlchemy tracks changes
+    await db.commit()
+    await db.refresh(author)
+    return author
+
+
+async def delete_author(db: AsyncSession, author_id: int) -> bool:
+    author = await db.get(models.Author, author_id)
+    if not author:
+        raise HTTPException(status_code=404, detail="Author not found")
+
+    # Deleting an author directly. The association with book is on the Author model.
+    # Cascade delete from Book to Author might also handle this if a book is deleted.
+    await db.delete(author)
+    await db.commit()
+    return True
+
+
+# --- Review CRUD ---
+async def create_review(db: AsyncSession, review_in: schemas.ReviewCreate, current_user: models.User) -> models.Review:
+    book = await db.get(models.Book, review_in.book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail=f"Book with id {review_in.book_id} not found for review.")
+
+    new_review = models.Review(
+        rating=review_in.rating,
+        review_text=review_in.review_text,
+        date_posted=datetime.now(timezone.utc),
+        book_id=review_in.book_id,
+        user_id=current_user.id
     )
     db.add(new_review)
     await db.commit()
     await db.refresh(new_review)
     return new_review
 
-async def get_reviews(db, book_id=None):
-    if book_id:
-        result = await db.execute(select(Review).where(Review.book_id == book_id))
-    else:
-        result = await db.execute(select(Review))
-    reviews = result.scalars().all()
-    return reviews
 
-async def update_review(db, review_id: int, updated_data, current_user):
-    result = await db.execute(select(Review).where(Review.id == review_id))
-    review = result.scalar_one_or_none()
+async def get_reviews(db: AsyncSession, book_id: Optional[int] = None) -> List[models.Review]:
+    query = select(models.Review)
+    if book_id:
+        query = query.where(models.Review.book_id == book_id)
+    result = await db.execute(query)
+    return result.scalars().all()
+
+
+async def update_review(db: AsyncSession, review_id: int, review_update: schemas.ReviewUpdate,
+                        current_user: models.User) -> Optional[models.Review]:
+    review = await db.get(models.Review, review_id)
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
 
-    # Allow only admin or owner
-    if review.user_id != current_user.id and current_user.role != Role.ADMIN:
+    if review.user_id != current_user.id and current_user.role != models.Role.ADMIN:
         raise HTTPException(status_code=403, detail="Not authorized to update this review")
 
-    review.rating = updated_data.rating
-    review.review_text = updated_data.review_text
-    review.book_id = updated_data.book_id
+    update_data = review_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(review, key, value)
 
+    # review.write_date handled by model
+    # db.add(review)
     await db.commit()
     await db.refresh(review)
     return review
 
-async def delete_review(db, review_id: int, current_user):
-    result = await db.execute(select(Review).where(Review.id == review_id))
-    review = result.scalar_one_or_none()
+
+async def delete_review(db: AsyncSession, review_id: int, current_user: models.User) -> dict:
+    review = await db.get(models.Review, review_id)
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
 
-    if review.user_id != current_user.id and current_user.role != Role.ADMIN:
+    if review.user_id != current_user.id and current_user.role != models.Role.ADMIN:
         raise HTTPException(status_code=403, detail="Not authorized to delete this review")
 
     await db.delete(review)
     await db.commit()
-    return {"detail": "Review deleted"}
+    return {"detail": "Review deleted successfully"}
 
 
-async def create_publisher(db, publisher):
-    new_pub = Publisher(
-        name=publisher.name,
-        email=publisher.email,
-        phone_number=publisher.phone_number,
-        website=publisher.website,
+# --- Publisher CRUD ---
+async def create_publisher(db: AsyncSession, publisher_in: schemas.PublisherCreate) -> models.Publisher:
+    existing_publisher_by_name = await db.execute(
+        select(models.Publisher).where(models.Publisher.name == publisher_in.name))
+    if existing_publisher_by_name.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Publisher name already exists")
+
+    existing_publisher_by_email = await db.execute(
+        select(models.Publisher).where(models.Publisher.email == publisher_in.email))
+    if existing_publisher_by_email.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Publisher email already exists")
+
+    new_publisher = models.Publisher(
+        name=publisher_in.name,
+        email=publisher_in.email,
+        phone_number=publisher_in.phone_number,
+        website=publisher_in.website,
+        book_count=0
     )
-    db.add(new_pub)
+    db.add(new_publisher)
     await db.commit()
-    await db.refresh(new_pub)
-    return new_pub
+    await db.refresh(new_publisher)
+    return new_publisher
 
-async def get_publishers(db):
-    result = await db.execute(select(Publisher))
+
+async def get_publishers(db: AsyncSession) -> List[models.Publisher]:
+    result = await db.execute(select(models.Publisher))
     return result.scalars().all()
+
+
+async def get_publisher(db: AsyncSession, publisher_id: int) -> Optional[models.Publisher]:
+    return await db.get(models.Publisher, publisher_id)
+
+
+async def update_publisher(db: AsyncSession, publisher_id: int, publisher_in: schemas.PublisherUpdate) -> Optional[
+    models.Publisher]:
+    publisher = await db.get(models.Publisher, publisher_id)
+    if not publisher:
+        return None  # Will be 404 in main.py
+
+    update_data = publisher_in.model_dump(exclude_unset=True)
+
+    # Check for uniqueness if name or email is being updated
+    if "name" in update_data and update_data["name"] != publisher.name:
+        existing = await db.execute(select(models.Publisher).where(models.Publisher.name == update_data["name"]))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Publisher name already exists.")
+
+    if "email" in update_data and update_data["email"] != publisher.email:
+        existing = await db.execute(select(models.Publisher).where(models.Publisher.email == update_data["email"]))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Publisher email already exists.")
+
+    for key, value in update_data.items():
+        setattr(publisher, key, value)
+
+    # publisher.write_date handled by model
+    # db.add(publisher)
+    await db.commit()
+    await db.refresh(publisher)
+    return publisher
+
+
+async def delete_publisher(db: AsyncSession, publisher_id: int) -> bool:
+    publisher = await db.get(models.Publisher, publisher_id)
+    if not publisher:
+        raise HTTPException(status_code=404, detail="Publisher not found")
+
+    # IMPORTANT: The Publisher model has `books = relationship("Book", ..., cascade="all, delete-orphan")`.
+    # This means deleting a publisher will delete all its associated books.
+    # If this is not desired, you might want to:
+    # 1. Check if publisher.books is empty before allowing deletion.
+    # 2. Or, change the cascade behavior in models.py (e.g., set books' publisher_id to null if allowed, or prevent delete).
+    # For this implementation, we proceed with the cascade delete.
+
+    # If you want to prevent deletion if books exist:
+    # if publisher.books: # This requires eager/lazy loading of publisher.books
+    #     # For async, you might need to query the count
+    #     book_count_result = await db.execute(select(func.count(models.Book.id)).where(models.Book.publisher_id == publisher_id))
+    #     book_count = book_count_result.scalar_one()
+    #     if book_count > 0:
+    #         raise HTTPException(status_code=400, detail=f"Cannot delete publisher: Publisher has {book_count} associated books. Please reassign or delete them first.")
+
+    await db.delete(publisher)
+    await db.commit()
+    return True

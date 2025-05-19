@@ -1,50 +1,3 @@
-<!--<!DOCTYPE html>-->
-<!--<html lang="en">-->
-<!--<head>-->
-<!--  <meta charset="UTF-8">-->
-<!--  <title>Dashboard</title>-->
-<!--  <link-->
-<!--    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"-->
-<!--    rel="stylesheet"-->
-<!--  >-->
-<!--  <link rel="stylesheet" href="/static/css/style.css">-->
-<!--</head>-->
-<!--<body>-->
-<!--  <nav class="navbar navbar-light bg-light">-->
-<!--    <div class="container-fluid">-->
-<!--      <span class="navbar-brand">Dashboard</span>-->
-<!--      <button id="logoutBtn" class="btn btn-outline-secondary">Logout</button>-->
-<!--    </div>-->
-<!--  </nav>-->
-
-<!--  <div class="container mt-4">-->
-<!--    <h5>Role: <span id="userRole"></span></h5>-->
-
-<!--    &lt;!&ndash; Book section example &ndash;&gt;-->
-<!--    <div id="bookSection" class="my-4">-->
-<!--      <h4>Books</h4>-->
-<!--      <ul id="bookList" class="list-group mb-3"></ul>-->
-<!--      <form id="createBookForm" class="d-flex">-->
-<!--        <input-->
-<!--          type="text" id="bookTitle"-->
-<!--          class="form-control me-2" placeholder="Title" required-->
-<!--        >-->
-<!--        <input-->
-<!--          type="number" id="bookPublisherId"-->
-<!--          class="form-control me-2" placeholder="Publisher ID" required-->
-<!--        >-->
-<!--        <button class="btn btn-success">Create</button>-->
-<!--      </form>-->
-<!--    </div>-->
-
-<!--    &lt;!&ndash; You can copy the pattern above to add Author, Review, Publisher sections &ndash;&gt;-->
-<!--  </div>-->
-<!--  <script src="/static/js/dashboard.js"></script>-->
-<!--</body>-->
-<!--</html>-->
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -55,38 +8,180 @@
     rel="stylesheet"
   >
   <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-  <nav class="navbar navbar-light bg-light">
+  <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
     <div class="container-fluid">
-      <span class="navbar-brand">Dashboard</span>
-      <button id="logoutBtn" class="btn btn-outline-secondary">Logout</button>
+      <a class="navbar-brand" href="/dashboard">Dashboard</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <span class="navbar-text me-3">
+              Role: <strong id="userRole">Loading...</strong>
+            </span>
+          </li>
+          <li class="nav-item">
+            <button id="logoutBtn" class="btn btn-outline-danger">Logout</button>
+          </li>
+        </ul>
+      </div>
     </div>
   </nav>
 
   <div class="container mt-4">
-    <h5>Role: <span id="userRole"></span></h5>
-
-    <div id="bookSection" class="my-4">
-      <h4>Books</h4>
-      <ul id="bookList" class="list-group mb-3"></ul>
-      <form id="createBookForm" class="d-flex">
-        <input
-          type="text" id="bookTitle"
-          class="form-control me-2" placeholder="Title" required
-        >
-        <input
-          type="number" id="bookPublisherId"
-          class="form-control me-2" placeholder="Publisher ID" required
-        >
-        <button class="btn btn-success">Create</button>
-      </form>
+    <div id="bookSection" class="my-4 p-3 border rounded">
+        <h4>Manage Books</h4>
+        <form id="createBookForm" class="row g-3 mb-3 align-items-end">
+            <div class="col-md-5">
+                <label for="bookTitle" class="form-label">Title</label>
+                <input type="text" id="bookTitle" class="form-control" placeholder="Enter Book Title" required>
+            </div>
+            <div class="col-md-5">
+                <label for="bookPublisherId" class="form-label">Publisher ID</label>
+                <input type="number" id="bookPublisherId" class="form-control" placeholder="Enter Publisher ID" required>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-success w-100">Create Book</button>
+            </div>
+        </form>
+        <h5>Existing Books</h5>
+        <table id="bookListTable" class="table table-striped">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Title</th>
+              <th>Publisher ID</th>
+              <th>Write Date</th> <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            </tbody>
+        </table>
     </div>
 
+    <div id="publisherSection" class="my-4 p-3 border rounded">
+        <h4>Manage Publishers</h4>
+         <form id="createPublisherForm" class="row g-3 mb-3 align-items-end">
+             <div class="col-md-3">
+                <label for="publisherName" class="form-label">Name</label>
+                <input type="text" id="publisherName" class="form-control" placeholder="Enter Publisher Name" required>
+            </div>
+             <div class="col-md-3">
+                <label for="publisherEmail" class="form-label">Email</label>
+                <input type="email" id="publisherEmail" class="form-control" placeholder="Enter Publisher Email" required>
+            </div>
+             <div class="col-md-2">
+                <label for="publisherPhone" class="form-label">Phone</label>
+                <input type="text" id="publisherPhone" class="form-control" placeholder="Enter Phone Number">
+            </div>
+             <div class="col-md-2">
+                <label for="publisherWebsite" class="form-label">Website</label>
+                <input type="text" id="publisherWebsite" class="form-control" placeholder="Enter Website URL">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-success w-100">Create Publisher</button>
+            </div>
+        </form>
+        <h5>Existing Publishers</h5>
+        <table id="publisherListTable" class="table table-striped">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Website</th>
+              <th>Books</th>
+              <th>Write Date</th> <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            </tbody>
+        </table>
     </div>
+
+    <div id="authorSection" class="my-4 p-3 border rounded">
+        <h4>Manage Authors</h4>
+        <form id="createAuthorForm" class="row g-3 mb-3 align-items-end">
+             <div class="col-md-3">
+                <label for="authorName" class="form-label">Name</label>
+                <input type="text" id="authorName" class="form-control" placeholder="Enter Author Name" required>
+            </div>
+             <div class="col-md-3">
+                <label for="authorBiography" class="form-label">Biography</label>
+                <textarea id="authorBiography" class="form-control" placeholder="Enter Biography"></textarea>
+            </div>
+             <div class="col-md-2">
+                <label for="authorBirthDate" class="form-label">Birth Date</label>
+                <input type="date" id="authorBirthDate" class="form-control">
+            </div>
+             <div class="col-md-2">
+                <label for="authorBookId" class="form-label">Book ID</label>
+                <input type="number" id="authorBookId" class="form-control" placeholder="Associated Book ID" required>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-success w-100">Create Author</button>
+            </div>
+        </form>
+        <h5>Existing Authors</h5>
+        <table id="authorListTable" class="table table-striped">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Biography</th> <th>Birth Date</th>
+              <th>Book ID</th>
+              <th>Write Date</th> <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="reviewSection" class="my-4 p-3 border rounded">
+        <h4>Manage Reviews</h4>
+        <form id="createReviewForm" class="row g-3 mb-3 align-items-end">
+             <div class="col-md-3">
+                <label for="reviewBookId" class="form-label">Book ID</label>
+                <input type="number" id="reviewBookId" class="form-control" placeholder="Book ID for Review" required>
+            </div>
+             <div class="col-md-3">
+                <label for="reviewRating" class="form-label">Rating (1-5)</label>
+                <input type="number" id="reviewRating" class="form-control" placeholder="Rating (1-5)" min="1" max="5" required>
+            </div>
+             <div class="col-md-4">
+                <label for="reviewText" class="form-label">Review Text</label>
+                <textarea id="reviewText" class="form-control" placeholder="Enter Review Text"></textarea>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-success w-100">Create Review</button>
+            </div>
+        </form>
+        <h5>Existing Reviews</h5>
+        <table id="reviewListTable" class="table table-striped">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Book ID</th>
+              <th>Rating</th>
+              <th>Review Text</th> <th>User ID</th>
+              <th>Posted</th>
+              <th>Write Date</th> <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            </tbody>
+        </table>
+    </div>
+  </div>
 
   <div class="modal fade" id="updateBookModal" tabindex="-1" aria-labelledby="updateBookModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="updateBookModalLabel">Update Book</h5>
@@ -103,12 +198,128 @@
               <label for="updateBookPublisherId" class="form-label">Publisher ID</label>
               <input type="number" class="form-control" id="updateBookPublisherId" required>
             </div>
-            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
           </form>
         </div>
       </div>
     </div>
   </div>
+
+  <div class="modal fade" id="updatePublisherModal" tabindex="-1" aria-labelledby="updatePublisherModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="updatePublisherModalLabel">Update Publisher</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="updatePublisherForm">
+            <input type="hidden" id="updatePublisherId">
+            <div class="mb-3">
+              <label for="updatePublisherName" class="form-label">Name</label>
+              <input type="text" class="form-control" id="updatePublisherName" required>
+            </div>
+            <div class="mb-3">
+              <label for="updatePublisherEmail" class="form-label">Email</label>
+              <input type="email" class="form-control" id="updatePublisherEmail" required>
+            </div>
+            <div class="mb-3">
+              <label for="updatePublisherPhone" class="form-label">Phone</label>
+              <input type="text" class="form-control" id="updatePublisherPhone">
+            </div>
+            <div class="mb-3">
+              <label for="updatePublisherWebsite" class="form-label">Website</label>
+              <input type="text" class="form-control" id="updatePublisherWebsite">
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="updateAuthorModal" tabindex="-1" aria-labelledby="updateAuthorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="updateAuthorModalLabel">Update Author</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="updateAuthorForm">
+            <input type="hidden" id="updateAuthorId">
+            <div class="mb-3">
+              <label for="updateAuthorName" class="form-label">Name</label>
+              <input type="text" class="form-control" id="updateAuthorName" required>
+            </div>
+            <div class="mb-3">
+              <label for="updateAuthorBiography" class="form-label">Biography</label>
+              <textarea class="form-control" id="updateAuthorBiography"></textarea>
+            </div>
+             <div class="mb-3">
+              <label for="updateAuthorBirthDate" class="form-label">Birth Date</label>
+              <input type="date" class="form-control" id="updateAuthorBirthDate">
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+   <div class="modal fade" id="updateReviewModal" tabindex="-1" aria-labelledby="updateReviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="updateReviewModalLabel">Update Review</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="updateReviewForm">
+            <input type="hidden" id="updateReviewId">
+            <div class="mb-3">
+              <label for="updateReviewRating" class="form-label">Rating (1-5)</label>
+              <input type="number" class="form-control" id="updateReviewRating" min="1" max="5" required>
+            </div>
+            <div class="mb-3">
+              <label for="updateReviewText" class="form-label">Review Text</label>
+              <textarea class="form-control" id="updateReviewText"></textarea>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="viewDetailsModal" tabindex="-1" aria-labelledby="viewDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="viewDetailsModalLabel">Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="viewDetailsContent">
+          </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/static/js/dashboard.js"></script>
